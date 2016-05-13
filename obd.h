@@ -21,13 +21,14 @@ public:
     void write();
     void connect();
     void disconnect();
-    void serialError();
+    void serialError(QSerialPort::SerialPortError error);
 
 private:
     Ui::Obd *ui;
     QSerialPort *serial;
     QTimer *timer;
     QString porta;
+    bool connected;
 };
 
 #endif // OBD_H

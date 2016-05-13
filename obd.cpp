@@ -6,6 +6,18 @@ Obd::Obd(QWidget *parent) :
     ui(new Ui::Obd)
 {
     ui->setupUi(this);
+
+    connected = false;
+
+    serial = new QSerialPort(this);
+    timer = new QTimer(this);
+
+    connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this,
+            SLOT(serialError(QSerialPort::SerialPortError)));
+
+    connect(serial, SIGNAL(readyRead()), this, SLOT(read()));
+
+    connect(timer,SIGNAL(timeout()),this,SLOT(write()));
 }
 
 Obd::~Obd()
@@ -21,7 +33,7 @@ Obd::connect(){
 
     qDebug() << "Porta: "<<ui->comboBox->currentText();
 
-    if(!conectado){
+    if(!connected){
         serial->setPortName(ui->comboBox->currentText());
         serial->setBaudRate(QSerialPort::Baud38400);
         serial->setFlowControl(QSerialPort::SoftwareControl);
@@ -36,7 +48,7 @@ Obd::connect(){
             serial->write( QByteArray("AT ST 00\r") );
             serial->write( QByteArray("AT SP 0\r") );
 
-            conectado = true;
+            connected = true;
             qDebug() << "Conectado";
 
             timer->start(100);
@@ -51,14 +63,14 @@ Obd::connect(){
 Obd::disconnect(){
     if (serial->isOpen())
         serial->close();
-    conectado = false;
+    connected = false;
 
     preencherPortasSeriais();
 
     timer->stop();
 }
 
-Obd::serialError(){
+Obd::serialError(QSerialPort::SerialPortError error){
     if (error == QSerialPort::ResourceError) {
         QMessageBox::critical(this, tr("Erro crítico"), serial->errorString());
         fecharSerial();
@@ -67,9 +79,6 @@ Obd::serialError(){
 
 Obd::write(){
     serial->write(QByteArray("0105\r"));
-    serial->write(QByteArray("010D\r"));
-    serial->write(QByteArray("010C\r"));
-    serial->write(QByteArray("012F\r"));
 }
 
 Obd::read(){
