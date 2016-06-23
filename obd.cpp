@@ -9,15 +9,14 @@ Obd::Obd(QWidget *parent) :
 
     connected = false;
 
-    serial = new QSerialPort(this);
+    socket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol);
+    socket->connectToService(remoteService);
+
     timer = new QTimer(this);
 
-    connect(serial, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(serialError(QSerialPort::SerialPortError)));
-
-    connect(serial, SIGNAL(readyRead()), this, SLOT(read()));
-
-    connect(timer,SIGNAL(timeout()),this,SLOT(write()));
+    connect(socket, SIGNAL(readyRead()), this, SLOT(read());
+            connect(socket, SIGNAL(connected()), this, SLOT(connected()));
+    connect(socket, SIGNAL(disconnected()), this, SLOT(disconnected()));
 }
 
 Obd::~Obd()
@@ -26,27 +25,35 @@ Obd::~Obd()
 }
 
 Obd::connect(){
-    serial = new QSerialPort(this);
-    timer = new QTimer(this);
+    QString uString = "00001101-0000-1000-8000-00805F9B34FB";
+    QBluetoothUuid *uuid = new QBluetoothUuid(&uString);
 
-    porta = ui->comboBox->currentText();
+    QBluetoothDeviceInfo aux, remoteService;
+
+    for(int i = 0; i<devices[i]; i++){
+        aux = devices[i];
+
+        if(aux.deviceUuid() == uuid){
+            remoteService = aux;
+        }
+    }
+
+    socket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol);
+
+    socket->connectToService(remoteService);
+
+    timer = new QTimer(this);
 
     qDebug() << "Porta: "<<ui->comboBox->currentText();
 
-    if(!connected){
-        serial->setPortName(ui->comboBox->currentText());
-        serial->setBaudRate(QSerialPort::Baud38400);
-        serial->setFlowControl(QSerialPort::SoftwareControl);
-        serial->setStopBits(QSerialPort::OneStop);
-        serial->setParity(QSerialPort::NoParity);
-        serial->setDataBits(QSerialPort::Data8);
+    if(!isConnected){
 
-        if (serial->open(QIODevice::ReadWrite)) {
+        if (socket->connect()) {
 
-            serial->write( QByteArray("AT E0\r") );
-            serial->write( QByteArray("AT L0\r") );
-            serial->write( QByteArray("AT ST 00\r") );
-            serial->write( QByteArray("AT SP 0\r") );
+            socket->write(QByteArray("AT E0\r"));
+            socket->write(QByteArray("AT L0\r"));
+            socket->write(QByteArray("AT ST 00\r"));
+            socket->write(QByteArray("AT SP 0\r"));
 
             connected = true;
             qDebug() << "Conectado";
@@ -61,12 +68,11 @@ Obd::connect(){
 }
 
 Obd::disconnect(){
-    if (serial->isOpen())
-        serial->close();
+    if (socket->isOpen())
+        socket->disconnect();
     connected = false;
 
-    preencherPortasSeriais();
-
+    devices.clear();
     timer->stop();
 }
 
@@ -78,12 +84,12 @@ Obd::serialError(QSerialPort::SerialPortError error){
 }
 
 Obd::write(){
-    serial->write(QByteArray("0105\r"));
+    socket->write(QByteArray("0105\r"));
 }
 
 Obd::read(){
     QByteArray data;
-    data = serial->readAll();
+    data = socket->readAll();
 
     QString str(data);
 
@@ -100,39 +106,34 @@ Obd::read(){
             qDebug() << "Temperatura: "<<temperaturaValor;
         }
     }
+}
 
-    if (mensagem.size() > 0){
-        if (mensagem[0] == "41" && mensagem[1] == "0D"){
-            velocidadeValor = mensagem[2].toInt(&ok,16);
+Obd::bluetooth(){
+    QString localDeviceName;
 
-            if(velocidadeO)
-                velocidadeO->setProperty("value", (double)velocidadeValor);
+    if(localDevice.isValid()){
+        localDevice.powerOn();
 
-            qDebug() << "Velocidade: "<<velocidadeValor;
-        }
+        localDeviceName = localDevice.name();
+
+        localDevice.setHostMode(QBluetoothLocalDevice::HostDiscoverable);
+
+        QList<QBluetoothAddress> remotes;
+        remotes = localDevice.connectedDevices();
     }
+}
 
-    if (mensagem.size() > 0){
-        if (mensagem[0] == "41" && mensagem[1] == "0C"){
-            rpmValor = (mensagem[2].toInt(&ok,16) * 256 + mensagem[3].toInt(&ok,16))/4;
 
-            if(rpmO)
-                rpmO->setProperty("value", (double)rpmValor/1000);
+Obd::findBluetooth(){
+    QBluetoothDeviceDiscoveryAgent *discoveryAgent = new QBluetoothDeviceDiscoveryAgent(this);
 
-            qDebug() << "RPM: "<<rpmValor;
-        }
-    }
+    device.clear();
 
-    if (mensagem.size() > 0){
-        if (mensagem[0] == "41" && mensagem[1] == "2F"){
-            fuelValor = mensagem[2].toInt(&ok,16) * 100 / 255;
+    connect(discoveryAgent, SIGNAL(deviceDiscovered(QBluetoothDeviceInfo)), this, SLOT(dispositivoEncontrado(QBluetoothDeviceInfo));
 
-            if(fuelO)
-                fuelO->setProperty("value", (double)fuelValor/100);
+            discoveryAgent->start();
+}
 
-            qDebug() << "Fuel: "<<fuelValor;
-        }
-    }
-
-    comando = (comando + 1)%4;
+Obd::dispositivoEncontrado(const QBluetoothDeviceInfo &device){
+    device.push_back(device);
 }

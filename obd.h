@@ -5,6 +5,10 @@
 #include <QtSerialPort/QSerialPort>
 #include <QString>
 #include <QTimer>
+#include <QtBluetooth/QBluetoothLocalDevice>
+#include <QtBluetooth/QBluetoothDeviceDiscoveryAgent>
+#include <QtBluetooth/QBluetoothSocket>
+#include <vector>
 
 namespace Ui {
 class Obd;
@@ -25,10 +29,12 @@ public:
 
 private:
     Ui::Obd *ui;
-    QSerialPort *serial;
+    QBluetoothSocket *socket;
     QTimer *timer;
     QString porta;
-    bool connected;
+    bool isConnected;
+    Vector<QBluetoothDeviceInfo> devices;
+    QBluetoothLocalDevice localdevice;
 };
 
 #endif // OBD_H
